@@ -25,34 +25,50 @@ StartServer = namedtuple('StartServer', [
 
 StopServer = namedtuple('StopServer', [])
 
+AddRoute = namedtuple('AddRoute', ['method', 'path', 'id'])
+Response = namedtuple('Response', ['context', 'data'])
+
 # source events
 ServerStarted = namedtuple('ServerStarted', [])
 ServerStopped = namedtuple('ServerStopped', [])
+RouteAdded = namedtuple('RouteAdded', ['method', 'path', 'id', 'request'])
+Request = namedtuple('Request', [
+    'method', 'path', 'data', 'context'
+])
 
 ''' Httpd source. The server stream is a stream of
+    - route is a stream of RouteAdded.
 '''
-Source = namedtuple('Source', ['server'])
+Source = namedtuple('Source', ['server', 'route'])
 
 def make_driver(loop=None):
 
     def driver(sink):
+        '''
+            Routes must be configured before starting the server.
+        '''
         app = None
         runner = None
-        request_observer = None
+        server_observer = None
+        route_observer = None
 
-        def add_route(type, path):
-            print("add route {} on path {}".format(type, path))
+        def add_route(app, method, path, id):
+            request_observer = None
+
+            def on_request_subscribe(observer):
+                nonlocal request_observer
+                request_observer = observer
+
             async def on_request_data(request, path):
                 nonlocal request_observer
                 data = await request.read()
                 response_future = asyncio.Future()
-                request_observer.on_next({
-                    "what": "data",
-                    "type": type,
-                    "path": path,
-                    "data": data,
-                    "context": response_future
-                })
+                request_observer.on_next(Request(
+                    method=method,
+                    path=path,
+                    data=data,
+                    context=response_future
+                ))
                 await response_future
 
                 response = web.StreamResponse(
@@ -67,22 +83,40 @@ def make_driver(loop=None):
                 return response
 
 
-            if(type == "PUT"):
+            if(method == "PUT"):
                 app.router.add_put(path, lambda r: on_request_data(r, path))
                 app.router.add_route("OPTIONS", path, lambda r: on_request_data(r, path))
-            elif(type == "POST"):
+            elif(method == "POST"):
                 app.router.add_post(path, lambda r: on_request_data(r, path))
                 app.router.add_route("OPTIONS", path, lambda r: on_request_data(r, path))
-            elif(type == "GET"):
+            elif(method == "GET"):
                 app.router.add_get(path, lambda r: on_request_data(r, path))
+            else:
+                # todo error handling
+                pass
+
+            if route_observer is not None:
+                route_observer.on_next(RouteAdded(
+                    method=method,
+                    path=path,
+                    id=id,
+                    request=Observable.create(on_request_subscribe)
+                ))
 
         def create_server_observable():
             def on_server_subscribe(observer):
-                nonlocal request_observer
-                request_observer = observer
+                nonlocal server_observer
+                server_observer = observer
 
             #scheduler = AsyncIOScheduler()
             return Observable.create(on_server_subscribe)
+
+        def create_route_observable():
+            def on_route_subscribe(observer):
+                nonlocal route_observer
+                route_observer = observer
+
+            return Observable.create(on_route_subscribe)
 
         def start_server(host, port, app):
             runner = web.AppRunner(app)
@@ -91,7 +125,8 @@ def make_driver(loop=None):
                 await runner.setup()
                 site = web.TCPSite(runner, host, port)
                 await site.start()
-                request_observer.on_next(ServerStarted())
+                server_observer.on_next(ServerStarted())
+
 
             asyncio.ensure_future(_start_server(runner), loop=loop)
             return runner
@@ -99,14 +134,19 @@ def make_driver(loop=None):
         def stop_server(runner):
             async def _stop_server():
                 await runner.cleanup()
-                request_observer.on_next(ServerStopped())
+                server_observer.on_next(ServerStopped())
 
             asyncio.ensure_future(_stop_server())
 
         def on_sink_item(i):
             nonlocal app
             nonlocal runner
-            if type(i) is StartServer:
+            if type(i) is Response:
+                response_future = i.context
+                response_future.set_result(i.data)
+            elif type(i) is AddRoute:
+                add_route(app, i.method, i.path, i.id)
+            elif type(i) is StartServer:
                 runner = start_server(i.host, i.port, app)
             elif type(i) is StopServer:
                 stop_server(runner)
@@ -118,17 +158,10 @@ def make_driver(loop=None):
             else:
                 print("received unknown item: {}".format(type(i)))
 
-            '''
-            if i["what"] == "response":
-                response_future = i["context"]
-                response_future.set_result(i["data"])
-
-            elif i["what"] == "add_route":
-                add_route(i["type"], i["path"])
-            '''
-
         sink.control.subscribe(on_sink_item)
-        return Source(server=create_server_observable())
+        return Source(
+            server=create_server_observable(),
+            route=create_route_observable())
 
     return driver
 
