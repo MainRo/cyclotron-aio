@@ -1,4 +1,5 @@
 from collections import namedtuple
+from cyclotron import Component
 import asyncio
 
 DisposeSink = namedtuple('DisposeSink', ['dispose'])
@@ -11,7 +12,7 @@ def make_dispose_driver(loop=None):
     def dispose(i):
         if i is not True:
             return
-            
+
         if loop is not None:
             loop.stop()
         else:
@@ -27,4 +28,4 @@ def make_dispose_driver(loop=None):
         sink.dispose.subscribe(lambda i: dispose(i))
         return None
 
-    return dispose_driver
+    return Component(call=dispose_driver, output=DisposeSink)

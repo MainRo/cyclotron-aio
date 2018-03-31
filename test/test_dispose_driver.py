@@ -29,7 +29,7 @@ class DisposeTestCase(TestCase):
         loop.call_soon(stop_loop)
 
         driver = make_dispose_driver()
-        driver(DisposeSink(dispose=observable))
+        driver.call(DisposeSink(dispose=observable))
 
         loop.run_forever()
         loop.close()
@@ -56,7 +56,7 @@ class DisposeTestCase(TestCase):
         loop.call_soon(stop_loop)
 
         driver = make_dispose_driver(loop=loop)
-        driver(DisposeSink(dispose=observable))
+        driver.call(DisposeSink(dispose=observable))
 
         loop.run_forever()
         loop.close()

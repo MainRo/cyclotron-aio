@@ -39,7 +39,7 @@ class HttpdServerTestCase(TestCase):
             sink.control.on_next(httpd.StartServer("localhost", 9999))
 
         loop.call_soon(control_stream, sink)
-        source = httpd.make_driver(loop)(sink)
+        source = httpd.make_driver(loop).call(sink)
         source.server.subscribe(on_httpd_item)
 
         loop.run_forever()
@@ -72,7 +72,7 @@ class HttpdServerTestCase(TestCase):
                     asyncio.get_event_loop().stop()
 
         loop.call_soon(setup, sink)
-        source = httpd.make_driver(loop)(sink)
+        source = httpd.make_driver(loop).call(sink)
         source.route.subscribe(on_route_item)
         loop.run_forever()
         loop.close()
@@ -104,6 +104,7 @@ class HttpdServerTestCase(TestCase):
             req = urllib.request.urlopen('http://localhost:8080/foo')
             response = req.read()
 
+        # todo rxpy threadpool
         client_thread = threading.Thread(target=do_get)
 
         def on_server_item(i):
@@ -118,7 +119,7 @@ class HttpdServerTestCase(TestCase):
             loop.call_soon(sink.control.on_next, httpd.StopServer())
 
         loop.call_soon(setup, sink)
-        source = httpd.make_driver(loop)(sink)
+        source = httpd.make_driver(loop).call(sink)
         source.route \
             .filter(lambda i : i.id == 'foo') \
             .flat_map(lambda i: i.request) \

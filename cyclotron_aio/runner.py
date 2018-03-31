@@ -1,9 +1,14 @@
 import asyncio
-from cyclotron.rx_runner import setup
+from cyclotron.rx import setup
 
-def run(main, drivers, source_factory=None, loop = None):
-
-    program = setup(main, drivers, source_factory)
+def run(entry_point, drivers, loop = None):
+    ''' This is a runner wrapping the cyclotron "run" implementation. It takes
+    an additional parameter to provide a custom asyncio mainloop.
+    '''
+    program = setup(entry_point, drivers)
     dispose = program.run()
+    if loop == None:
+        loop = asyncio.get_event_loop()
+
     loop.run_forever()
     dispose()

@@ -2,6 +2,8 @@ import os
 from enum import Enum
 import asyncio
 from collections import namedtuple
+from cyclotron import Component
+
 from rx import Observable
 from rx.concurrency import AsyncIOScheduler
 
@@ -41,8 +43,8 @@ Request = namedtuple('Request', [
 '''
 Source = namedtuple('Source', ['server', 'route'])
 
-def make_driver(loop=None):
 
+def make_driver(loop=None):
     def driver(sink):
         '''
             Routes must be configured before starting the server.
@@ -125,7 +127,8 @@ def make_driver(loop=None):
                 await runner.setup()
                 site = web.TCPSite(runner, host, port)
                 await site.start()
-                server_observer.on_next(ServerStarted())
+                if server_observer is not None:
+                    server_observer.on_next(ServerStarted())
 
 
             asyncio.ensure_future(_start_server(runner), loop=loop)
@@ -163,7 +166,4 @@ def make_driver(loop=None):
             server=create_server_observable(),
             route=create_route_observable())
 
-    return driver
-
-
-# loop.create_task()
+    return Component(call=driver, output=Sink)

@@ -15,7 +15,7 @@ except IOError:
 
 python_requires='>=3.5'
 install_requires = [
-    'cyclotron>=0.1',
+    'cyclotron>=0.3',
     'aiohttp>=3.0',
 ]
 
