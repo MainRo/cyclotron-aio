@@ -2,3 +2,5 @@
 .ropeproject
 .tox
 *.egg-info
+build
+dist
