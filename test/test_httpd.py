@@ -115,7 +115,7 @@ class HttpdServerTestCase(TestCase):
                 asyncio.get_event_loop().stop()
 
         def on_route_item(i):
-            sink.control.on_next(httpd.Response(context=i.context, data='foo'))
+            sink.control.on_next(httpd.Response(context=i.context, data=b'foo'))
             loop.call_soon(sink.control.on_next, httpd.StopServer())
 
         loop.call_soon(setup, sink)

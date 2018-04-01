@@ -21,7 +21,7 @@ def echo_server(source):
         .flat_map(lambda i: i.request)  \
         .map(lambda i: httpd.Response(
             context=i.context,
-            data=i.data.decode("utf-8")))
+            data=i.data))
 
     control = Observable.merge(init, echo)
     return EchoSink(httpd=httpd.Sink(control=control))

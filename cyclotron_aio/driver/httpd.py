@@ -28,7 +28,8 @@ StartServer = namedtuple('StartServer', [
 StopServer = namedtuple('StopServer', [])
 
 AddRoute = namedtuple('AddRoute', ['method', 'path', 'id'])
-Response = namedtuple('Response', ['context', 'data'])
+Response = namedtuple('Response', ['context', 'data', 'status'])
+Response.__new__.__defaults__ = (200,)
 
 # source events
 ServerStarted = namedtuple('ServerStarted', [])
@@ -72,18 +73,12 @@ def make_driver(loop=None):
                     context=response_future
                 ))
                 await response_future
+                data, status = response_future.result()
 
-                response = web.StreamResponse(
-                    status=200, reason=None,
-                    headers=MultiDict([
-                        ("Access-Control-Allow-Origin", "*"),
-                        ("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept"),
-                        ("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS"),
-                    ]))
+                response = web.StreamResponse(status=status, reason=None)
                 await response.prepare(request)
-                await response.write(bytearray(response_future.result(), 'utf8'))
+                await response.write(data)
                 return response
-
 
             if(method == "PUT"):
                 app.router.add_put(path, lambda r: on_request_data(r, path))
@@ -110,7 +105,6 @@ def make_driver(loop=None):
                 nonlocal server_observer
                 server_observer = observer
 
-            #scheduler = AsyncIOScheduler()
             return Observable.create(on_server_subscribe)
 
         def create_route_observable():
@@ -146,7 +140,7 @@ def make_driver(loop=None):
             nonlocal runner
             if type(i) is Response:
                 response_future = i.context
-                response_future.set_result(i.data)
+                response_future.set_result((i.data, i.status))
             elif type(i) is AddRoute:
                 add_route(app, i.method, i.path, i.id)
             elif type(i) is StartServer:
