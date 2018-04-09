@@ -160,4 +160,4 @@ def make_driver(loop=None):
             server=create_server_observable(),
             route=create_route_observable())
 
-    return Component(call=driver, output=Sink)
+    return Component(call=driver, input=Sink)
