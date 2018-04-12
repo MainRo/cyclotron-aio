@@ -22,21 +22,22 @@ Initialize = namedtuple('Initialize', [
 Initialize.__new__.__defaults__ = (1024**2,)
 
 StartServer = namedtuple('StartServer', [
-    'host', 'port'
+    'port', 'host'
 ])
+StartServer.__new__.defaults__ = ('localhost',)
 
 StopServer = namedtuple('StopServer', [])
 
 AddRoute = namedtuple('AddRoute', ['method', 'path', 'id'])
 Response = namedtuple('Response', ['context', 'data', 'status'])
-Response.__new__.__defaults__ = (200,)
+Response.__new__.__defaults__ = (None, 200,)
 
 # source events
 ServerStarted = namedtuple('ServerStarted', [])
 ServerStopped = namedtuple('ServerStopped', [])
 RouteAdded = namedtuple('RouteAdded', ['method', 'path', 'id', 'request'])
 Request = namedtuple('Request', [
-    'method', 'path', 'data', 'context'
+    'method', 'path', 'match_info', 'data', 'context'
 ])
 
 ''' Httpd source. The server stream is a stream of
@@ -69,6 +70,7 @@ def make_driver(loop=None):
                 request_observer.on_next(Request(
                     method=method,
                     path=path,
+                    match_info=request.match_info,
                     data=data,
                     context=response_future
                 ))
@@ -77,7 +79,8 @@ def make_driver(loop=None):
 
                 response = web.StreamResponse(status=status, reason=None)
                 await response.prepare(request)
-                await response.write(data)
+                if data is not None:
+                    await response.write(data)
                 return response
 
             if(method == "PUT"):
@@ -112,7 +115,7 @@ def make_driver(loop=None):
                 nonlocal route_observer
                 route_observer = observer
 
-            return Observable.create(on_route_subscribe)
+            return Observable.create(on_route_subscribe).share()
 
         def start_server(host, port, app):
             runner = web.AppRunner(app)
