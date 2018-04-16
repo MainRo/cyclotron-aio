@@ -15,13 +15,13 @@ except IOError:
 
 python_requires='>=3.5'
 install_requires = [
-    'cyclotron>=0.3',
+    'cyclotron>=0.4',
     'aiohttp>=3.0',
 ]
 
 setup(
     name="cyclotron-aio",
-    version='0.1.0',
+    version='0.2.0',
     url='https://github.com/MainRo/cyclotron-aio.git',
     license='MIT',
     description="Asynchronous IO drivers for cyclotron",
