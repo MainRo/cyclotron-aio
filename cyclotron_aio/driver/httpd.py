@@ -1,3 +1,4 @@
+import traceback
 import os
 from enum import Enum
 import asyncio
@@ -28,14 +29,16 @@ StartServer.__new__.defaults__ = ('localhost',)
 
 StopServer = namedtuple('StopServer', [])
 
-AddRoute = namedtuple('AddRoute', ['method', 'path', 'id'])
+AddRoute = namedtuple('AddRoute', ['methods', 'path', 'id', 'headers'])
+AddRoute.__new__.__defaults__ = (None,)
+
 Response = namedtuple('Response', ['context', 'data', 'status'])
 Response.__new__.__defaults__ = (None, 200,)
 
 # source events
 ServerStarted = namedtuple('ServerStarted', [])
 ServerStopped = namedtuple('ServerStopped', [])
-RouteAdded = namedtuple('RouteAdded', ['method', 'path', 'id', 'request'])
+RouteAdded = namedtuple('RouteAdded', ['path', 'id', 'request'])
 Request = namedtuple('Request', [
     'method', 'path', 'match_info', 'data', 'context'
 ])
@@ -56,7 +59,7 @@ def make_driver(loop=None):
         server_observer = None
         route_observer = None
 
-        def add_route(app, method, path, id):
+        def add_route(app, methods, path, id, headers = None):
             request_observer = None
 
             def on_request_subscribe(observer):
@@ -67,41 +70,34 @@ def make_driver(loop=None):
                 nonlocal request_observer
                 data = await request.read()
                 response_future = asyncio.Future()
-                request_observer.on_next(Request(
-                    method=method,
+                request_item = Request(
+                    method=request.method,
                     path=path,
                     match_info=request.match_info,
                     data=data,
                     context=response_future
-                ))
+                )
+                request_observer.on_next(request_item)
                 await response_future
                 data, status = response_future.result()
 
-                response = web.StreamResponse(status=status, reason=None)
+                response = web.StreamResponse(status=status, reason=None,
+                    headers= None if headers is None else MultiDict(headers))
                 await response.prepare(request)
                 if data is not None:
                     await response.write(data)
                 return response
 
-            if(method == "PUT"):
-                app.router.add_put(path, lambda r: on_request_data(r, path))
-                app.router.add_route("OPTIONS", path, lambda r: on_request_data(r, path))
-            elif(method == "POST"):
-                app.router.add_post(path, lambda r: on_request_data(r, path))
-                app.router.add_route("OPTIONS", path, lambda r: on_request_data(r, path))
-            elif(method == "GET"):
-                app.router.add_get(path, lambda r: on_request_data(r, path))
-            else:
-                # todo error handling
-                pass
+            for method in methods:
+                app.router.add_route(method, path, lambda r: on_request_data(r, path))
 
             if route_observer is not None:
-                route_observer.on_next(RouteAdded(
-                    method=method,
+                route = RouteAdded(
                     path=path,
                     id=id,
                     request=Observable.create(on_request_subscribe)
-                ))
+                )
+                route_observer.on_next(route)
 
         def create_server_observable():
             def on_server_subscribe(observer):
@@ -145,7 +141,7 @@ def make_driver(loop=None):
                 response_future = i.context
                 response_future.set_result((i.data, i.status))
             elif type(i) is AddRoute:
-                add_route(app, i.method, i.path, i.id)
+                add_route(app, i.methods, i.path, i.id, i.headers)
             elif type(i) is StartServer:
                 runner = start_server(i.host, i.port, app)
             elif type(i) is StopServer:
@@ -158,7 +154,10 @@ def make_driver(loop=None):
             else:
                 print("received unknown item: {}".format(type(i)))
 
-        sink.control.subscribe(on_sink_item)
+        def on_sink_error(e):
+            print("http sink error: {}, {}".format(e, traceback.format_exc()))
+
+        sink.control.subscribe(on_next=on_sink_item, on_error=on_sink_error)
         return Source(
             server=create_server_observable(),
             route=create_route_observable())
