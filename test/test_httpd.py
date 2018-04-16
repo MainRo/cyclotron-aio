@@ -95,7 +95,7 @@ class HttpdServerTestCase(TestCase):
             sink.control.on_next(httpd.Initialize()),
             sink.control.on_next(httpd.AddRoute(
                 methods=['GET'], path='/foo', id='foo'))
-            sink.control.on_next(httpd.StartServer(host='localhost',port=8080)),
+            sink.control.on_next(httpd.StartServer(host='localhost', port=8080)),
 
         def do_get():
             nonlocal response
