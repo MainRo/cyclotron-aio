@@ -5,7 +5,6 @@ import urllib.request
 
 from rx import Observable
 from rx.subjects import Subject
-from cyclotron_aio.driver.dispose import make_dispose_driver, DisposeSink
 import cyclotron_aio.driver.httpd as httpd
 
 
@@ -14,8 +13,8 @@ class HttpdServerTestCase(TestCase):
     def test_start_server_item(self):
         self.assertRaises(TypeError, httpd.StartServer)
 
-        item = httpd.StartServer("localhost", 80)
-        self.assertEqual("localhost", item.host)
+        item = httpd.StartServer(host='localhost', port=80)
+        self.assertEqual('localhost', item.host)
         self.assertEqual(80, item.port)
 
 
@@ -36,7 +35,7 @@ class HttpdServerTestCase(TestCase):
 
         def control_stream(sink):
             sink.control.on_next(httpd.Initialize())
-            sink.control.on_next(httpd.StartServer("localhost", 9999))
+            sink.control.on_next(httpd.StartServer(host='localhost', port=9999))
 
         loop.call_soon(control_stream, sink)
         source = httpd.make_driver(loop).call(sink)
@@ -47,9 +46,9 @@ class HttpdServerTestCase(TestCase):
 
     def test_add_route(self):
         routes = [
-            httpd.AddRoute(method='GET', path='/foo', id='foo'),
-            httpd.AddRoute(method='POST', path='/bar', id='bar'),
-            httpd.AddRoute(method='PUT', path='/biz', id='biz'),
+            httpd.AddRoute(methods=['GET'], path='/foo', id='foo'),
+            httpd.AddRoute(methods=['POST'], path='/bar', id='bar'),
+            httpd.AddRoute(methods=['PUT'], path='/biz', id='biz'),
         ]
         actual_routes = []
         loop = asyncio.new_event_loop()
@@ -60,7 +59,7 @@ class HttpdServerTestCase(TestCase):
 
         def setup(sink):
             sink.control.on_next(httpd.Initialize()),
-            sink.control.on_next(httpd.StartServer('localhost', 9999)),
+            sink.control.on_next(httpd.StartServer(host='localhost', port=9999)),
             for route in routes:
                 sink.control.on_next(route)
 
@@ -79,7 +78,6 @@ class HttpdServerTestCase(TestCase):
 
         self.assertEqual(len(routes), len(actual_routes))
         for index,route in enumerate(actual_routes):
-            self.assertEqual(routes[index].method, route.method)
             self.assertEqual(routes[index].path, route.path)
             self.assertEqual(routes[index].id, route.id)
             self.assertIsInstance(route.request, Observable)
@@ -96,8 +94,8 @@ class HttpdServerTestCase(TestCase):
         def setup(sink):
             sink.control.on_next(httpd.Initialize()),
             sink.control.on_next(httpd.AddRoute(
-                method='GET', path='/foo', id='foo'))
-            sink.control.on_next(httpd.StartServer('localhost', 8080)),
+                methods=['GET'], path='/foo', id='foo'))
+            sink.control.on_next(httpd.StartServer(host='localhost',port=8080)),
 
         def do_get():
             nonlocal response
