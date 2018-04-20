@@ -2,13 +2,13 @@ import asyncio
 from unittest import TestCase
 
 from rx import Observable
-from cyclotron_aio.driver.dispose import make_dispose_driver, DisposeSink
+import cyclotron_aio.driver.dispose as dispose
 
 
 class DisposeTestCase(TestCase):
 
     def test_make_driver(self):
-        self.assertIsNotNone(make_dispose_driver())
+        self.assertIsNotNone(dispose.make_driver())
 
     def test_stop_default_loop(self):
         stopped = False
@@ -28,8 +28,8 @@ class DisposeTestCase(TestCase):
         loop = asyncio.get_event_loop()
         loop.call_soon(stop_loop)
 
-        driver = make_dispose_driver()
-        driver.call(DisposeSink(dispose=observable))
+        driver = dispose.make_driver()
+        driver.call(dispose.Sink(dispose=observable))
 
         loop.run_forever()
         loop.close()
@@ -55,8 +55,8 @@ class DisposeTestCase(TestCase):
         self.assertNotEqual(asyncio.get_event_loop(), stopped)
         loop.call_soon(stop_loop)
 
-        driver = make_dispose_driver(loop=loop)
-        driver.call(DisposeSink(dispose=observable))
+        driver = dispose.make_driver(loop=loop)
+        driver.call(dispose.Sink(dispose=observable))
 
         loop.run_forever()
         loop.close()
