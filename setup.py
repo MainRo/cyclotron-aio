@@ -22,7 +22,7 @@ install_requires = [
 
 setup(
     name="cyclotron-aio",
-    version='0.2.0',
+    version='0.3.0',
     url='https://github.com/MainRo/cyclotron-aio.git',
     license='MIT',
     description="Asynchronous IO drivers for cyclotron",
