@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from cyclotron import Component
 from cyclotron_aio.runner import run
-import cyclotron_aio.driver.httpd as httpd
+import cyclotron_aio.httpd as httpd
 from rx import Observable
 
 EchoSource = namedtuple('EchoSource', ['httpd'])

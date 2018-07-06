@@ -2,7 +2,7 @@ import asyncio
 from unittest import TestCase
 
 from rx import Observable
-import cyclotron_aio.driver.dispose as dispose
+import cyclotron_aio.dispose as dispose
 
 
 class DisposeTestCase(TestCase):

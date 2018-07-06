@@ -5,7 +5,7 @@ import urllib.request
 
 from rx import Observable
 from rx.subjects import Subject
-import cyclotron_aio.driver.httpd as httpd
+import cyclotron_aio.httpd as httpd
 
 
 class HttpdServerTestCase(TestCase):
