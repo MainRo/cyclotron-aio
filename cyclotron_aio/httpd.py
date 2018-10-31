@@ -40,7 +40,9 @@ ServerStarted = namedtuple('ServerStarted', [])
 ServerStopped = namedtuple('ServerStopped', [])
 RouteAdded = namedtuple('RouteAdded', ['path', 'id', 'request'])
 Request = namedtuple('Request', [
-    'method', 'path', 'match_info', 'data', 'context'
+    'method', 'path', 'match_info', 'data',
+    'headers',
+    'context'
 ])
 
 ''' Httpd source. The server stream is a stream of
@@ -59,7 +61,7 @@ def make_driver(loop=None):
         server_observer = None
         route_observer = None
 
-        def add_route(app, methods, path, id, headers = None):
+        def add_route(app, methods, path, id, headers=None):
             request_observer = None
 
             def on_request_subscribe(observer):
@@ -75,14 +77,15 @@ def make_driver(loop=None):
                     path=path,
                     match_info=request.match_info,
                     data=data,
-                    context=response_future
+                    context=response_future,
+                    headers=request.headers,
                 )
                 request_observer.on_next(request_item)
                 await response_future
                 data, status = response_future.result()
 
                 response = web.StreamResponse(status=status, reason=None,
-                    headers= None if headers is None else MultiDict(headers))
+                    headers=None if headers is None else MultiDict(headers))
                 await response.prepare(request)
                 if data is not None:
                     await response.write(data)
