@@ -1,6 +1,4 @@
 import traceback
-import os
-from enum import Enum
 import asyncio
 from collections import namedtuple
 from cyclotron import Component
@@ -16,7 +14,7 @@ Source = namedtuple('Source', ['response'])
 # sink events
 
 Request = namedtuple('Request', [
-    'id', 'method', 'url', 'params', 'data', 'headers', 
+    'id', 'method', 'url', 'params', 'data', 'headers',
     'allow_redirects', 'max_redirects'
 ])
 
@@ -27,9 +25,9 @@ Request.__new__.__defaults__ = ('GET', None, None, None, None, True, 10,)
 Response = namedtuple('Response', ['id', 'response'])
 
 HttpResponse = namedtuple('HttpResponse', [
-    'status', 'reason', 
-    'method', 'url', 
-    'data', 'cookies', 
+    'status', 'reason',
+    'method', 'url',
+    'data', 'cookies',
     'headers', 'content_type'])
 
 
@@ -62,16 +60,19 @@ def make_driver(loop=None):
                     observer.on_next(Response(
                         id=request.id,
                         response=Observable.just(HttpResponse(
-                            status=response.status, reason=response.status, 
+                            status=response.status, reason=response.status,
                             method=response.method, url=response.url,
-                            data=data, cookies=response.cookies, 
-                            headers=response.headers, content_type=response.content_type
+                            data=data, cookies=response.cookies,
+                            headers=response.headers,
+                            content_type=response.content_type
                         ))
                     ))
 
                 except Exception as e:
                     print("exception: {}".format(e))
-                    observer.on_next(Response(id=request.id, response=Observable.throw(e)))
+                    observer.on_next(Response(
+                        id=request.id,
+                        response=Observable.throw(e)))
 
             def on_request_item(i):
                 if type(i) is Request:
@@ -80,9 +81,12 @@ def make_driver(loop=None):
                     print("received unknown item: {}".format(type(i)))
 
             def on_request_error(e):
-                print("http sink error: {}, {}".format(e, traceback.format_exc()))
+                print("http sink error: {}, {}".format(
+                    e, traceback.format_exc()))
 
-            return sink.request.subscribe(on_next=on_request_item, on_error=on_request_error)
+            return sink.request.subscribe(
+                on_next=on_request_item,
+                on_error=on_request_error)
 
         return Source(
             response=Observable.create(on_response_subscribe)
@@ -102,21 +106,17 @@ def client(sources):
     http_request = Subject()
 
     def request(method, url, **kwargs):
-        '''
-        params=None, data=None, headers=None, 
-        allow_redirects=None, max_redirects=None):
-        '''
-
-        def on_subscribe(observer):            
+        def on_subscribe(observer):
             response = (
-                sources.http_response                
-                .filter(lambda i: i.id is response_observable)            
+                sources.http_response
+                .filter(lambda i: i.id is response_observable)
                 .take(1)
                 .flat_map(lambda i: i.response)
             )
-            
-            dispose = response.subscribe(observer)            
-            http_request.on_next(Request(id=response_observable, 
+
+            dispose = response.subscribe(observer)
+            http_request.on_next(Request(
+                id=response_observable,
                 url=url,
                 method=method,
                 **kwargs
@@ -124,7 +124,7 @@ def client(sources):
 
             return dispose
 
-        response_observable =  Observable.create(on_subscribe)
+        response_observable = Observable.create(on_subscribe)
         return response_observable
 
     return Client(
