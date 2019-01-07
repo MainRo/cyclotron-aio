@@ -13,7 +13,7 @@ EchoDrivers = namedtuple('EchoDrivers', ['httpd'])
 def echo_server(source):
     init = Observable.from_([
         httpd.Initialize(),
-        httpd.AddRoute(method='POST', path='/echo', id='echo'),
+        httpd.AddRoute(methods=['GET'], path='/echo/{what}', id='echo'),
         httpd.StartServer(host='localhost', port=8080),
     ])
 
@@ -21,7 +21,7 @@ def echo_server(source):
         .flat_map(lambda i: i.request)  \
         .map(lambda i: httpd.Response(
             context=i.context,
-            data=i.data))
+            data=i.match_info['what'].encode('utf-8')))
 
     control = Observable.merge(init, echo)
     return EchoSink(httpd=httpd.Sink(control=control))
