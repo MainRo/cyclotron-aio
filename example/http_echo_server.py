@@ -17,11 +17,13 @@ def echo_server(source):
         httpd.StartServer(host='localhost', port=8080),
     ])
 
-    echo = source.httpd.route           \
-        .flat_map(lambda i: i.request)  \
+    echo = (
+        source.httpd.route
+        .filter(lambda i: i.id == 'echo')
+        .flat_map(lambda i: i.request)
         .map(lambda i: httpd.Response(
             context=i.context,
-            data=i.match_info['what'].encode('utf-8')))
+            data=i.match_info['what'].encode('utf-8'))))
 
     control = Observable.merge(init, echo)
     return EchoSink(httpd=httpd.Sink(control=control))
